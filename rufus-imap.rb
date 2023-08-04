@@ -9,8 +9,7 @@ ENV['port']='993'
 ENV['ssl']='true'
 ENV['starttls']='true'
 ENV['username']='redmine@seattlecommunitynetwork.org'
-# CONFIG Add password. DO NOT COMMIT
-ENV['password']='your_password'
+ENV['password']=ENV['REDMINE_IMAP_PASSWORD']
 
 ENV['project']='scn'
 ENV['unknown_user']='create'

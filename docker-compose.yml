@@ -31,8 +31,8 @@ services:
       - REDMINE_SMTP_HOST=smtp-relay.gmail.com
       - REDMINE_SMTP_PORT=587
       - REDMINE_SMTP_USER=redmine@seattlecommunitynetwork.org
-      # REMINDER: Fix password before deploying. DO NOT COMMIT.
-      - REDMINE_SMTP_PASSWORD='your_password'
+      - REDMINE_SMTP_PASSWORD=${REDMINE_SMTP_PASSWORD}
+      - REDMINE_IMAP_PASSWORD=${REDMINE_IMAP_PASSWORD}
 volumes:
   mariadb_data:
     driver: local
