@@ -22,8 +22,8 @@ Deploy into a standard Docker engine with:
 		
 Incoming IMAP email is handled by adding a cron job running on the Docker host:
 
-		sudo crontab -e
-		*/5 * * * * docker exec -t redmine-redmine-1 /opt/bitnami/redmine/cron-imap.sh 2>&1 | /usr/bin/logger -t redmine-imap
+    sudo crontab -e
+    */5 * * * * docker exec -t redmine-redmine-1 /opt/bitnami/redmine/cron-imap.sh 2>&1 | /usr/bin/logger -t redmine-imap
 		
 This cron job uses docker to execute the imap job inside the redmine container, and capture std and err output to syslog (tagged "redmine-imap").
 
