@@ -2,7 +2,7 @@
 Redmine container for Seattle Community Network
 
 This is intended to be the thinnest shim possible on top of the Bitnami redmine container (https://hub.docker.com/r/bitnami/redmine/)
-to support receiving email via IMAP and secure storage of of secrets. When possible, follow the Bitnami instructions.
+to support receiving email via IMAP and secure storage of secrets. When possible, follow the Bitnami instructions.
 
 *Eventually* this project should also support tools to backup and recover the config and DB volumes.
 
