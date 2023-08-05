@@ -8,6 +8,8 @@ to support receiving email via IMAP and secure storage of secrets. When possible
 
 ## Usage
 
+### Deploy
+
 Copy the `sample.env` file to `.env`, and update the passwords
     
     cp sample.env .env
@@ -33,8 +35,16 @@ and add the following entry to the bottom:
 		
 This cron job uses docker to execute the imap job inside the redmine container, and capture std and err output to syslog (tagged "redmine-imap").
 
+### Backup and Restore
+
+A script called `vackup` is included to support backing-up and restoring the volumes used in the redmine deployment.
+
+    
+
 ## Further Reading
 
 * https://github.com/bitnami/containers/tree/main/bitnami/redmine#how-to-use-this-image
 * https://bitnami.com/stack/redmine/containers
 * https://www.redmine.org/projects/redmine/wiki/RedmineReceivingEmails
+* https://github.com/BretFisher/docker-vackup
+
