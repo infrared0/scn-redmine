@@ -13,6 +13,9 @@ Copy the `sample.env` file to `.env`, and update the passwords
     cp sample.env .env
     chmod 600 .env
     vi .env
+
+And update the file with the correct passwords
+
     REDMINE_SMTP_PASSWORD=your_password
     REDMINE_IMAP_PASSWORD=your_password
 
