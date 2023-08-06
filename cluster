@@ -76,7 +76,7 @@ cmd_export() {
         echo "Error: Failed to start busybox backup container"
         exit 1
     fi
-    
+
     echo exported $VOLUME_NAME into $FILE_NAME"
 }
 
@@ -171,96 +171,3 @@ case "$1" in
         echo -e $"Usage: $name {up|down|status|rebuild|backup|restore <tgz>}"
         exit 1
 esac
-
-
-
-
-
-
-
-
-
-
-
-# ---- OLD ---- kept for syntax tips (for now)
-
-function ping() {
-    # handle params
-    ping_port=${ping_port-$1}
-    ping_url=${ping_url-"http://localhost:$ping_port"}
-            
-    # first, check the url
-    ## Status code only
-    #ping_resp=$(curl -w %{http_code} -sL -o /dev/null --connect-timeout 10 $ping_url)
-    ## Full HTTP status line
-    ping_resp=$(curl --connect-timeout 10 -sfiL "$ping_url" | grep 'HTTP/' | /usr/bin/tail -1 | tr -d '[:cntrl:]')
-    if [ -z "$ping_resp" ]
-    then
-        status="unknown"
-        echo 1 $pid_file
-        # look for pid file
-        if [ -f "$pid_file" ]
-        
-                echo 2 $pid_file
-
-        
-            pid=$(cat $pid_file)
-        then
-        
-                    echo 3 $pid_file
-
-            status="blah"
-        fi
-                echo 4 $pid_file
-
-        # check process
-    else
-        status=up$'\t'[$ping_resp]
-    fi
-    
-    echo 5 $pid_file
-    
-    # look for pid file
-    if [ -f $pid_file ]
-        pid=$(cat $pid_file)
-        proc=($(ps -p $pid -o "%cpu= %mem="))
-        cpu=${proc[0]}
-        mem=${proc[1]}
-        #echo pid=$pid, cpu=$cpu, mem=$mem
-        status="$status ($pid $cpu%/$mem%)"
-    then
-        status="???"
-    fi
-    
-}
-
-function print_status() {
-    ping 28080
-    printf "%10s:\t%s\n" $name "$status"
-    exit 0
-}
-
-function yoyo() {
-    # then, figure out if the proc is running (tomcat pid, then grep)
-    # else just not running
-        if [ -f $proj_home/logs/tomcat.pid ]
-        then
-            PID=$(cat $proj_home/logs/tomcat.pid)
-            if [ -z "$PID" ] 
-            then
-                status=down
-            else
-                PING=$(curl -sfI "http://localhost:28080" | head -1)
-                if [ -z "$PING" ]
-                then
-                    status="not accepting requests ($PID)"
-                else
-                    status="up ($PID) $PING"
-                fi
-            fi
-        else
-            status="down [no PID file]"
-        fi
-}
-
-
