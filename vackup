@@ -51,7 +51,7 @@ fi
 cmd_export() {
     VOLUME_NAME="$2"
     FILE_NAME="$3"
-    
+
     if [ -z "$VOLUME_NAME" ] || [ -z "$FILE_NAME" ]; then
         echo "Error: Not enough arguments"
         usage
@@ -69,11 +69,13 @@ cmd_export() {
 # TODO: if FILE_NAME starts with / we need to error out
 # unless we can translate full file paths
 
+# Added redirect to dev/null. remove to debug
+
     if ! docker run --rm \
       -v "$VOLUME_NAME":/vackup-volume \
       -v "$(pwd)":/vackup \
       busybox \
-      tar -zcvf /vackup/"$FILE_NAME" /vackup-volume;
+      tar -zcvf /vackup/"$FILE_NAME" /vackup-volume >/dev/null 2>&1 ;
     then
         echo "Error: Failed to start busybox backup container"
         exit 1
@@ -178,7 +180,7 @@ cmd_load() {
     echo "Successfully copied /volume-data from $IMAGE_NAME into volume $VOLUME_NAME"
 }
 
-cmd_list() {
+cmd_export_matching() {
     VOLUME_FILTER="$2"
 
     if [ -z "$VOLUME_FILTER" ]; then
@@ -187,15 +189,27 @@ cmd_list() {
         exit 1
     fi
 
-    docker volume ls --filter name=redmine | while read line ; do
-        echo === $line ===
+    # Note on date formatting below:
+    # In bash (>=4.2) it is preferable to use printf's built-in date formatter (part of bash) 
+    # rather than the external date (usually GNU date).
+    # As such:
+    # put current date as yyyy-mm-dd in $date
+    # -1 -> explicit current date, bash >=4.3 defaults to current time if not provided
+    # -2 -> start time for shell
+    ### printf -v date '%(%Y-%m-%d)T\n' -1 
+    # put current date as yyyy-mm-dd HH:MM:SS in $date
+    ### printf -v date '%(%Y-%m-%d %H:%M:%S)T\n' -1 
+    # to print directly remove -v flag, as such:
+    ### printf '%(%Y-%m-%d)T\n' -1
+    # -> current date printed to terminal
+    # from: https://stackoverflow.com/questions/1401482/yyyy-mm-dd-format-date-in-shell-script
+
+    printf -v date '%(%Y%m%d%H%M)T' -1 
+    docker volume ls -q --filter name=$VOLUME_FILTER | while read volume ; do
+        target="${volume}-$date.tgz"
+        echo Export volume $volume to $target
+        cmd_export "placeholder" $volume $target
     done
-    
-    #if ! docker volume inspect --format '{{.Name}}' "$VOLUME_NAME";
-    #then
-    #    echo "Error: Volume $VOLUME_NAME does not exist"
-    #    exit 1
-    #fi
 }
 
 
@@ -205,7 +219,7 @@ case "$COMMAND" in
   import) cmd_import "$@" ;;
   save) cmd_save "$@" ;;
   load) cmd_load "$@" ;;
-  list) cmd_list "$@" ;;
+  exall) cmd_export_matching "$@" ;;
 esac
 
 exit 0
