@@ -11,35 +11,35 @@ This project will also act as an example of best practices for minimalist contai
 
 ### Deploy
 
-1. Clone the repo
-2. Copy the `sample.env` file to `.env`, and update the passwords
-
-    git clone git@github.com:philion/scn-redmine.git redmine
-    cd redmine
-    cp sample.env .env
-    chmod 600 .env
-    vi .env
-
+1. Clone the repo `git@github.com:philion/scn-redmine.git`.
+2. Copy the `sample.env` file to `.env` and update the passwords:
+```
+git clone git@github.com:philion/scn-redmine.git redmine
+cd redmine
+cp sample.env .env
+chmod 600 .env
+vi .env
+```
 3. Update the file with the correct passwords:
-
-    REDMINE_SMTP_PASSWORD=your_password
-    REDMINE_IMAP_PASSWORD=your_password
-
-4. Deploy into a standard Docker engine with:
-    
-    ./cluster up
-
+```
+REDMINE_SMTP_PASSWORD=your_password
+REDMINE_IMAP_PASSWORD=your_password
+```
+4. Deploy into a standard Docker engine:
+```
+./cluster up
+```
 
 ### Configure IMAP
 
 Incoming IMAP email is handled by adding a cron job running on the Docker host:
-
-    sudo crontab -e
-
+```
+sudo crontab -e
+```
 and add the following entry to the bottom:
-
-    */5 * * * * docker exec -t redmine-redmine-1 /opt/bitnami/redmine/cron-imap.sh 2>&1 | /usr/bin/logger -t redmine-imap
-		
+```
+*/5 * * * * docker exec -t redmine-redmine-1 /opt/bitnami/redmine/cron-imap.sh 2>&1 | /usr/bin/logger -t redmine-imap
+```	
 This cron job uses docker to execute the imap job inside the redmine container, and capture std and err output to syslog (tagged "redmine-imap").
 
 
@@ -48,26 +48,27 @@ This cron job uses docker to execute the imap job inside the redmine container, 
 The provided `cluster` script handles creating backups and restoring the cluster state from them.
 
 To create a backup:
-
-    ./cluster backup
-
+```
+./cluster backup
+```
 This will create a file named `clustername-datestamp.tgz`, where redmine-202308051251.tgz
 
 To restore a cluster from backup:
-
-    ./cluster restore backup-202308051251.tgz
+```
+./cluster restore backup-202308051251.tgz
+```
 
 ### Standard Operation
 
 The `cluster` script provides standard management operations:
-
-    cluster status        - what's the status of the cluster (default)
-    cluster up            - bring the entire cluster
-    cluster down          - bring the entire cluster down
-    cluster rebuild       - rebuild and start the cluster
-    cluster backup        - make a backup of the cluster
-    cluster restore <tgz> - restore a cluster from the given backup .tgz file
-
+```
+cluster status        - what's the status of the cluster (default)
+cluster up            - bring the entire cluster
+cluster down          - bring the entire cluster down
+cluster rebuild       - rebuild and start the cluster
+cluster backup        - make a backup of the cluster
+cluster restore <tgz> - restore a cluster from the given backup .tgz file
+```
 
 ## Backup Process & Structure
 
@@ -99,20 +100,8 @@ Restoring the backup file with 'cluster restore backup-file.tgz'
 
 ## TODO
 
-Complete refactoring of vackup into "cluster", to provide a generalized shim on top on any container engine (currently docker) to help make SOPs easier.
-
 TODO: `vackup importall *redmine*` to GLOB expected files, derive the volume from the filename, and then import the tarfile
-TODO: Update usage docs, with new cmds and input feedback
-    
-A simple script to help with cluster management
-
-   cluster status        - what's the status of the cluster (default)
-   cluster up            - bring the entire cluster
-   cluster down          - bring the entire cluster down
-   cluster rebuild       - rebuild and start the cluster
-   cluster backup        - make a backup of the cluster
-   cluster restore <tgz> - restore a cluster from the given backup .tgz file
-		 
+TODO: Update usage docs, with new cmds and input feedback	 
 TODO add better usage
 TODO migrate vackup functions to this one
 TODO refactor backup package.
