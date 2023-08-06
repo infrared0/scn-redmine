@@ -70,7 +70,7 @@ cmd_export() {
       -v "$VOLUME_NAME":/backup-volume \
       -v "$(pwd)":/backup \
       busybox \
-      tar -zcf /backup/"$FILE_NAME" /backup-volume ;
+      tar -zcf /backup/"$FILE_NAME" /backup-volume > /dev/null 2>&1 ;
     then
         echo "Error: Failed to start busybox backup container"
         exit 1
@@ -131,7 +131,7 @@ cmd_backup() {
 	done
 
     # finally, tar the tarfiles and remove the dir
-    tar -zcvf "$backupdir".tgz "$backupdir"
+    tar -zcf "$backupdir".tgz "$backupdir"
     rm -fr "$backupdir"
 }
 
