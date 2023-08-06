@@ -21,6 +21,9 @@ status=$1 # Just as a simple default
 # WARNING: Right now, cluster assumes PWD is in the same t
 composefile="docker-compose.yml"
 
+# NOTE: remembering to type sudo gets me often.
+DOCKER="sudo docker"
+
 ##
 ## Backup File Structure
 ##
@@ -62,7 +65,7 @@ cmd_export() {
 
 # Added redirect to dev/null. remove to debug
 
-    if ! docker run --rm \
+    if ! $DOCKER run --rm \
       -v "$VOLUME_NAME":/vackup-volume \
       -v "$(pwd)":/vackup \
       busybox \
@@ -104,15 +107,12 @@ cmd_restore() {
 # note: resolve $0 to get full path, and cd to it.
 
 case "$1" in
-    rebuild)
-				sudo docker compose down
-				sudo docker up --build -d
-        ;;
-    up)      sudo docker up -d ;;
-    down)    sudo docker down ;;
-    status)  sudo docker ps ;;
-		backup)  cmd_backup ;;
-		restore) cmd_restore "$2" ;;
+    rebuild) $DOCKER compose down; $DOCKER --build -d ;;
+    up)      $DOCKER compose up -d ;;
+    down)    $DOCKER compose down ;;
+    status)  $DOCKER ps ;;
+	backup)  cmd_backup ;;
+	restore) cmd_restore "$2" ;;
     *)
         echo -e $"Usage: $name {up|down|status|rebuild|backup|restore <tgz>}"
         exit 1
