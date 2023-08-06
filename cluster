@@ -104,7 +104,7 @@ cmd_import() {
       -v "$VOLUME_NAME":/backup-volume \
       -v "$(pwd)":/backup \
       busybox \
-      tar -xvzf /backup/"$FILE_NAME" -C /; 
+      tar -xzf /backup/"$FILE_NAME" -C / > /dev/null 2>&1 ; 
     then
         echo "Error: Failed to start busybox container"
         exit 1
