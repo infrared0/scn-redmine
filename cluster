@@ -17,8 +17,7 @@ trap 'handle_error $LINENO' ERR
 # TODO better way to check status in the container. what are the expected services? parse the compose
 # TODO check for tools: docker, yq
 
-name=$(basename $0)
-status=$1 # Just as a simple default
+name=$(basename "$0")
 
 # WARNING: Right now, cluster assumes PWD is in the same t
 composefile="docker-compose.yml"
@@ -77,7 +76,7 @@ cmd_export() {
         exit 1
     fi
 
-    echo exported $VOLUME_NAME into $FILE_NAME"
+    echo "exported $VOLUME_NAME into $FILE_NAME"
 }
 
 cmd_import() {
@@ -110,52 +109,52 @@ cmd_import() {
         echo "Error: Failed to start busybox container"
         exit 1
     fi
-    echo imported $VOLUME_NAME, from $FILE_NAME
+    echo "imported $VOLUME_NAME, from $FILE_NAME"
 }
 
 cmd_backup() {
 	# get the context from parent dir
 	# NOTE:glossary - "context" is the namespace derived from the parent directory that compose uses in the docker engine.
 	dir="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )";
-	context="$(basename $dir)"
+	context="$(basename "$dir")"
 	#echo context=$context
 	
 	datestr="$(date +%Y%m%H%M)"
 	backupdir="$context-$datestr"
-	mkdir -p $backupdir
+	mkdir -p "$backupdir"
 	
 	# parse the composefile to get the volume names
-	yq e '.volumes | keys | .[]' $composefile | while read volume ; do
+	yq e '.volumes | keys | .[]' $composefile | while read -r volume ; do
 		volname="${context}_${volume}"		
 		target="${backupdir}/${volume}.tgz"
-		cmd_export $volname $target
+		cmd_export "$volname" "$target"
 	done
 
     # finally, tar the tarfiles and remove the dir
-    tar -zcvf "$backupdir".tgz $backupdir
-    rm -fr $backupdir
+    tar -zcvf "$backupdir".tgz "$backupdir"
+    rm -fr "$backupdir"
 }
 
 cmd_restore() {
 	tarfile=$1
     dir="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )";
-	context="$(basename $dir)"
+	context="$(basename "$dir")"
 
     # untar the tar to a new TMP_DIR
     #TMP_DIR=`mktemp -d` && tar -C $TMP_DIR -xf $tarfile
-    tar -xf $tarfile
+    tar -xf "$tarfile"
     tardir=${tarfile%.*}
     #echo Restored backup to tmp: $TMP_DIR/$tarname
 
     # parse the composefile to get the volume names
-	yq e '.volumes | keys | .[]' $composefile | while read volume ; do
+	yq e '.volumes | keys | .[]' $composefile | while read -r volume ; do
 		volname="${context}_$volume"		
 		target="$tardir/$volume.tgz"
-        cmd_import $target $volname
+        cmd_import "$target" "$volname"
         #echo restored $volname, from $tarfile
 	done
-    rm -fr $tardir
-    echo restored $context from $tarfile
+    rm -fr "$tardir"
+    echo "restored $context from $tarfile"
 }
 
 # note: resolve $0 to get full path, and cd to it.
