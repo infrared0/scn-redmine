@@ -35,6 +35,6 @@ services:
       - REDMINE_IMAP_PASSWORD=${REDMINE_IMAP_PASSWORD}
 volumes:
   mariadb_data:
-    driver: local
+    driver: external
   redmine_data:
-    driver: local
+    driver: external

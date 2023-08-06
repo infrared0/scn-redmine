@@ -185,61 +185,68 @@ cmd_restore() {
 # 
 cmd_status() {
     # build an array of expected services from the project file
-    expected=$(yq e '.services | keys | .[]' $project_file)
+    #expected=($(yq e '.services | keys | .[]' $project_file))
+    #echo "${expected[@]}"
+    err=0
 
     # use 'docker compose ps --all' in the project dir to get all containers associated with the project
     # '-q' supresses the header and returns IDs instead of human-readable table
+    # FIXME This doesn't catch "cluster down", thinks all good because docker isn't running any containers. need to work out that expected.
     $DOCKER compose ps --all -q | while read -r container ; do
-        response=$(DOCKER inspect --type=container "$container" --format "{{.Labels.com.docker.compose.project.working_dir}} {{.Labels.com.docker.compose.service}} {{.State.Status}}")
-        working_dir=${response[0]} # '{{.Labels.com.docker.compose.project.working_dir}}'
-        service=${response[1]}     # '{{.Labels.com.docker.compose.service}}'
-        status_str=${response[2]}  # '{{.State.Status}}'
-        err=0
-        # checks:
-        # TODO '.Labels.com.docker.compose.project.working_dir' == $project_dir <-- same cluster/project
-        # status == 'running'
-        found="false" # using strings for human readability
+        # from https://www.shellcheck.net/wiki/SC2207
+        IFS=" " read -r -a response <<< "$($DOCKER inspect --type=container "$container" --format '{{index .Config.Labels "com.docker.compose.project.working_dir"}} {{index .Config.Labels "com.docker.compose.service"}} {{.State.Status}}')"
+        
+        # see https://stackoverflow.com/questions/36439800/get-label-value-from-docker-inspect
+        working_dir=${response[0]} # {{index .Config.Labels "com.docker.compose.project.working_dir"}}
+        service=${response[1]}     # {{index .Config.Labels "com.docker.compose.service"}}
+        status_str=${response[2]}  # {{.State.Status}}
+        #found="false" # using strings for human readability
+
+        # confirm status == 'running'
         if [ "$status_str" == "running" ]; then
             # confirm working_dir us the same as project_dir
-            if ! [ "$working_dir" != "$project_dir" ]; then
+            if ! [ "$working_dir" == "$project_dir" ]; then
                 echo -e "unexpected working_dir: $working_dir, expected $project_dir"
+                exit 1
             fi
 
+            echo "+ $project $service: $status_str" # all good, deeper status check/heartbeat?
             # search for service in expected array
-            for i in "${!expected[@]}"; do
-                if [[ "${expected[$i]}" = "${service}" ]]; then
-                    echo "$project $service $status_str" # all good, deeper status check/heartbeat?
-                    # remove service from expected list
-                    unset "expected[$i]" # quotes? really?
-                    echo "$expected" # REMOVE
-                    found="true"
-                    break
-                fi
-            done
-            if ! [ "$found" == "true" ]; then # FIXME check i vs array size?
-                # the service was not found in the expected array
-                echo -e "warning: unexpected $project $service, not in $project_file"
-            fi
+            #for i in "${!expected[@]}"; do
+            #    if [[ "${expected[$i]}" = "${service}" ]]; then
+            #        echo "+ $project $service: $status_str" # all good, deeper status check/heartbeat?
+            #        # remove service from expected list
+            #        unset "expected[$i]" # quotes? really?
+            #        #echo EXPECTED after unset "$i": "${expected[@]}" # REMOVE
+            #        found="true"
+            #        break
+            #    fi
+            #done
+            #if ! [ "$found" == "true" ]; then # FIXME check i vs array size?
+            #    # the service was not found in the expected array
+            #    echo -e "warning: unexpected service $service, not found in $project_file"
+            #fi
         else 
             # else dump '.State' for info
             # TODO - better state formatting
-            fullstate=$(DOCKER inspect --type=container "$container" --format "{{.State}}")
+            fullstate=$($DOCKER inspect --type=container "$container" --format "{{.State}}")
             echo "$project $service ERROR: $fullstate"
             err=$((err+1)) # TODO should be list
         fi
 
-        # check if expected services are missing, the $expected array should be empty
-        if [ "${#expected[@]}" -gt 0 ]; then
-            echo -e "expected services not found in $project: $expected"
-            exit 1
-        fi
-
-        # check for errors
-        if [ $err -gt 0 ]; then
-            echo -e "errors found during status check ($err)"
-            exit 1
-        fi
 	done
+
+    # check if expected services are missing, the $expected array should be empty
+    #if [ "${#expected[@]}" -gt 0 ]; then
+    #    echo -e expected services not found in "$project": "${expected[@]}"
+    #    exit 1
+    #fi
+
+    # check for errors
+    if [ "$err" -gt 0 ]; then
+        echo -e "errors found during status check ($err)"
+        exit 1
+    fi
 }
 
 usage() {
