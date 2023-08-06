@@ -134,8 +134,9 @@ cmd_backup() {
 		#echo export $volname $target
 	done
 
-    # finally, tar the tarfiles
+    # finally, tar the tarfiles and remove the dir
     tar -zcvf "$backupdir".tgz $backupdir
+    rm -fr $backupdir
 }
 
 cmd_restore() {
