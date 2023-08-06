@@ -33,6 +33,8 @@ project_file="docker-compose.yml"
 # NOTE: remembering to type sudo gets me often.
 DOCKER="sudo docker"
 
+#readonly true=1 false=0
+
 ##
 ## Backup File Structure
 ##
@@ -183,70 +185,61 @@ cmd_restore() {
 #    "com.docker.compose.project.working_dir": "/home/philion/github/redmine",
 #    "com.docker.compose.service": "redmine"
 # 
-cmd_status() {
-    # build an array of expected services from the project file
-    #expected=($(yq e '.services | keys | .[]' $project_file))
-    #echo "${expected[@]}"
-    err=0
+# healthcheck, in docker compose: https://github.com/compose-spec/compose-spec/blob/master/spec.md#healthcheck
+# healthcheck:
+#   test: ["CMD", "curl", "-f", "http://localhost"]
+#   interval: 1m30s
+#   timeout: 10s
+#   retries: 3
+#   start_period: 40s
+#   start_interval: 5s
+#
 
-    # use 'docker compose ps --all' in the project dir to get all containers associated with the project
-    # '-q' supresses the header and returns IDs instead of human-readable table
-    # FIXME This doesn't catch "cluster down", thinks all good because docker isn't running any containers. need to work out that expected.
-    $DOCKER compose ps --all -q | while read -r container ; do
-        # from https://www.shellcheck.net/wiki/SC2207
-        IFS=" " read -r -a response <<< "$($DOCKER inspect --type=container "$container" --format '{{index .Config.Labels "com.docker.compose.project.working_dir"}} {{index .Config.Labels "com.docker.compose.service"}} {{.State.Status}}')"
-        
+# for a given container, healthcheck will return status information in human readable format
+# if the status is completely valid, the first char will be a +, if down or errored a -, if unknown, a ?
+healthcheck() {
+    container="$1"
+    #echo container=$container
+
+    # given a container name (from project-service)
+    found=false
+    # $DOCKER container ls --filter="name=$container" -q | while read -r container_id ; do
+    while read -r container_id ; do
         # see https://stackoverflow.com/questions/36439800/get-label-value-from-docker-inspect
+        IFS=" " read -r -a response <<< "$($DOCKER inspect "$container_id" --format '{{index .Config.Labels "com.docker.compose.project.working_dir"}} {{index .Config.Labels "com.docker.compose.service"}} {{.State.Status}}')"
+        
         working_dir=${response[0]} # {{index .Config.Labels "com.docker.compose.project.working_dir"}}
         service=${response[1]}     # {{index .Config.Labels "com.docker.compose.service"}}
         status_str=${response[2]}  # {{.State.Status}}
-        #found="false" # using strings for human readability
 
         # confirm status == 'running'
-        if [ "$status_str" == "running" ]; then
+        if ! [ "$status_str" = "running" ]; then
+            fullstate=$($DOCKER inspect "$container_id" --format "{{.State}}")
+            # TODO better error state reporting, check healthcheck 1>&2
+            echo "- $project $service: ERROR $fullstate"
+        elif ! [ "$working_dir" = "$project_dir" ]; then
             # confirm working_dir us the same as project_dir
-            if ! [ "$working_dir" == "$project_dir" ]; then
-                echo -e "unexpected working_dir: $working_dir, expected $project_dir"
-                exit 1
-            fi
-
+            echo "? $project $service: unexpected working_dir: $working_dir, expected $project_dir"
+        else
+            found=true
             echo "+ $project $service: $status_str" # all good, deeper status check/heartbeat?
-            # search for service in expected array
-            #for i in "${!expected[@]}"; do
-            #    if [[ "${expected[$i]}" = "${service}" ]]; then
-            #        echo "+ $project $service: $status_str" # all good, deeper status check/heartbeat?
-            #        # remove service from expected list
-            #        unset "expected[$i]" # quotes? really?
-            #        #echo EXPECTED after unset "$i": "${expected[@]}" # REMOVE
-            #        found="true"
-            #        break
-            #    fi
-            #done
-            #if ! [ "$found" == "true" ]; then # FIXME check i vs array size?
-            #    # the service was not found in the expected array
-            #    echo -e "warning: unexpected service $service, not found in $project_file"
-            #fi
-        else 
-            # else dump '.State' for info
-            # TODO - better state formatting
-            fullstate=$($DOCKER inspect --type=container "$container" --format "{{.State}}")
-            echo "$project $service ERROR: $fullstate"
-            err=$((err+1)) # TODO should be list
         fi
+	done < <( $DOCKER container ls --filter="name=$container" -q )
+    # note: refactored loop based on https://stackoverflow.com/questions/34098271/bash-retain-variables-value-after-while-loop
 
-	done
-
-    # check if expected services are missing, the $expected array should be empty
-    #if [ "${#expected[@]}" -gt 0 ]; then
-    #    echo -e expected services not found in "$project": "${expected[@]}"
-    #    exit 1
-    #fi
-
-    # check for errors
-    if [ "$err" -gt 0 ]; then
-        echo -e "errors found during status check ($err)"
-        exit 1
+    if ! $found; then
+        # if it gets here, the container wasn't found
+        echo "? $project $service: unable to find container for $container"
     fi
+}
+
+status_all() {
+    yq e '.services | keys | .[]' $project_file | while read -r service ; do
+        #echo checking $service
+        result=$(healthcheck "$project-$service")
+        echo "$result"
+        # check first char for +,-,?
+    done
 }
 
 usage() {
@@ -263,11 +256,16 @@ if ! [ -f "$project_file" ]; then
     usage
 fi
 
-case "$1" in
+# there's probably a better way to make status default
+command="status"
+if [ $# -gt 0 ]; then
+    command=$1
+fi
+case "$command" in
     rebuild) $DOCKER compose down; $DOCKER --build -d ;;
     up)      $DOCKER compose up -d ;;
     down)    $DOCKER compose down ;;
-    status)  cmd_status ;;
+    status)  status_all ;; #cmd_status ;;
 	backup)  cmd_backup ;;
 	restore) cmd_restore "$2" ;;
     *)       usage "$@"
