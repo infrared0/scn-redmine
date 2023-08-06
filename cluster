@@ -59,7 +59,7 @@ cmd_export() {
     if ! $DOCKER volume inspect --format '{{.Name}}' "$VOLUME_NAME";
     then
         echo "Error: Volume $VOLUME_NAME does not exist"
-        #FIXME exit 1
+        exit 1
     fi
 
 # TODO: if FILE_NAME starts with / we need to error out
@@ -71,15 +71,13 @@ cmd_export() {
       -v "$VOLUME_NAME":/backup-volume \
       -v "$(pwd)":/backup \
       busybox \
-      tar -zcvf /backup/"$FILE_NAME" /backup-volume >/dev/null 2>&1 ;
+      tar -zcf /backup/"$FILE_NAME" /backup-volume ;
     then
-        #echo "Error: Failed to start busybox backup container"
-        #exit 1
-        #FIXME after testing
-        touch $FILE_NAME
+        echo "Error: Failed to start busybox backup container"
+        exit 1
     fi
-
-    echo "Successfully tar'ed volume $VOLUME_NAME into file $FILE_NAME"
+    
+    echo exported $VOLUME_NAME into $FILE_NAME"
 }
 
 cmd_import() {
@@ -110,7 +108,7 @@ cmd_import() {
       tar -xvzf /backup/"$FILE_NAME" -C /; 
     then
         echo "Error: Failed to start busybox container"
-        #exit 1
+        exit 1
     fi
     echo imported $VOLUME_NAME, from $FILE_NAME
 }
@@ -131,7 +129,6 @@ cmd_backup() {
 		volname="${context}_${volume}"		
 		target="${backupdir}/${volume}.tgz"
 		cmd_export $volname $target
-		#echo export $volname $target
 	done
 
     # finally, tar the tarfiles and remove the dir
