@@ -100,11 +100,7 @@ Restoring the backup file with 'cluster restore backup-file.tgz'
 
 ## TODO
 
-TODO: `vackup importall *redmine*` to GLOB expected files, derive the volume from the filename, and then import the tarfile
 TODO: Update usage docs, with new cmds and input feedback	 
-TODO add better usage
-TODO migrate vackup functions to this one
-TODO refactor backup package.
 TODO better way to check status in the container. what are the expected services? parse the compose
 TODO check for tools: docker, yq
-TODO should the cluster script be verbose requarding the commands it issues?
+TODO should the cluster script be verbose requarding the commands it issues, to support learning?

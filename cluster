@@ -1,6 +1,7 @@
 #!/bin/bash
 
-trap 'handle_error $LINENO' ERR
+# is an error handler needed? for usage?
+#trap 'handle_error $LINENO' ERR
 
 # A simple script to help with cluster management
 #
@@ -17,7 +18,14 @@ trap 'handle_error $LINENO' ERR
 # TODO better way to check status in the container. what are the expected services? parse the compose
 # TODO check for tools: docker, yq
 
+### sudo snap install yq <-- INSTALL YQ via snap 
+
 name=$(basename "$0")
+
+# get the context from parent dir
+# NOTE:glossary - "context" is the namespace derived from the parent directory that compose uses in the docker engine.
+cluster_dir="$(cd -P -- "$(dirname -- "$0")" && pwd -P)"
+context=$(basename "$cluster_dir")
 
 # WARNING: Right now, cluster assumes PWD is in the same t
 composefile="docker-compose.yml"
@@ -113,49 +121,50 @@ cmd_import() {
 }
 
 cmd_backup() {
-	# get the context from parent dir
-	# NOTE:glossary - "context" is the namespace derived from the parent directory that compose uses in the docker engine.
-	dir="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )";
-	context="$(basename "$dir")"
-	#echo context=$context
-	
+    # generate a datestamp for YYYYmmHHMM; the current time to the minute
 	datestr="$(date +%Y%m%H%M)"
 	backupdir="$context-$datestr"
 	mkdir -p "$backupdir"
 	
 	# parse the composefile to get the volume names
 	yq e '.volumes | keys | .[]' $composefile | while read -r volume ; do
-		volname="${context}_${volume}"		
-		target="${backupdir}/${volume}.tgz"
+        # for each volume, export the volume to the
+		volname="${context}_$volume"		
+		target="$backupdir/$volume.tgz"
 		cmd_export "$volname" "$target"
 	done
 
     # finally, tar the tarfiles and remove the dir
-    tar -zcf "$backupdir".tgz "$backupdir"
+    tarfile="$backupdir".tgz 
+    tar -zcf "$tarfile" "$backupdir"
     rm -fr "$backupdir"
+    echo backed-up "$context" to "$tarfile"
 }
 
 cmd_restore() {
 	tarfile=$1
-    dir="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )";
-	context="$(basename "$dir")"
 
-    # untar the tar to a new TMP_DIR
-    #TMP_DIR=`mktemp -d` && tar -C $TMP_DIR -xf $tarfile
+    # untar the tar file
     tar -xf "$tarfile"
     tardir=${tarfile%.*}
-    #echo Restored backup to tmp: $TMP_DIR/$tarname
 
     # parse the composefile to get the volume names
 	yq e '.volumes | keys | .[]' $composefile | while read -r volume ; do
+        # for each volume, import the target into the volume
 		volname="${context}_$volume"		
 		target="$tardir/$volume.tgz"
         cmd_import "$target" "$volname"
-        #echo restored $volname, from $tarfile
 	done
+
+    # cleanup the untar directory.
     rm -fr "$tardir"
     echo "restored $context from $tarfile"
 }
+
+cmd_status() {
+    $DOCKER ps 
+}
+
 
 # note: resolve $0 to get full path, and cd to it.
 
@@ -163,7 +172,7 @@ case "$1" in
     rebuild) $DOCKER compose down; $DOCKER --build -d ;;
     up)      $DOCKER compose up -d ;;
     down)    $DOCKER compose down ;;
-    status)  $DOCKER ps ;;
+    status)  cmd_status ;;
 	backup)  cmd_backup ;;
 	restore) cmd_restore "$2" ;;
     *)
