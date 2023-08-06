@@ -101,6 +101,5 @@ Restoring the backup file with 'cluster restore backup-file.tgz'
 ## TODO
 
 TODO: Update usage docs, with new cmds and input feedback	 
-TODO better way to check status in the container. what are the expected services? parse the compose
 TODO check for tools: docker, yq
 TODO should the cluster script be verbose requarding the commands it issues, to support learning?
