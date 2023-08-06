@@ -22,13 +22,13 @@
 
 name=$(basename "$0")
 
-# get the context from parent dir
-# NOTE:glossary - "context" is the namespace derived from the parent directory that compose uses in the docker engine.
-cluster_dir="$(cd -P -- "$(dirname -- "$0")" && pwd -P)"
-context=$(basename "$cluster_dir")
+# get the project name from parent dir
+project_dir="$(cd -P -- "$(dirname -- "$0")" && pwd -P)"
+project=$(basename "$project_dir")
 
-# WARNING: Right now, cluster assumes PWD is in the same t
-composefile="docker-compose.yml"
+# WARNING: Right now, cluster assumes PWD is in the same dir
+project_file="docker-compose.yml"
+#project_path=$project_dir/$project_file
 
 # NOTE: remembering to type sudo gets me often.
 DOCKER="sudo docker"
@@ -40,14 +40,14 @@ DOCKER="sudo docker"
 # 1. Creating a new date-stamped dir from the parent-dir name (same as compose): name-YYYYMMDDHHMM
 # 2. For each volume mentioned in the compose.yml
 #   2.1 Run an empty container, with the volume and the backup dir mounted
-#   2.2 Archive contents of volume: volume.tgz in the mounted backup dir, w/o parent-context
+#   2.2 Archive contents of volume: volume.tgz in the mounted backup dir
 # 3. tar-gzip the entire backyp dir into name-YYYYMMDDHHMM.tgz
 #
 # Restoring the backup file with 'cluster restore backup-file.tgz'
 # 1. Untar the backup file (into tmp?)
 # 2. For each tgz file in the backup:
 #   2.1 Confirm a matching entry in the compose file
-#   2.2 ? Confirm a matching entry in container engine - note parent context of restore (ability to re-home)
+#   2.2 ? Confirm a matching entry in container engine - note ability to re-home in new project
 #   2.3 Run a simple container, mounting the volume and the backup
 #   2.4 Import the backup into the volume with tar on the specific volume
 # 3. Cleanup the backup dir (leaving the backup.tgz untouched)
@@ -58,15 +58,14 @@ cmd_export() {
     FILE_NAME="$2"
 
     if [ -z "$VOLUME_NAME" ] || [ -z "$FILE_NAME" ]; then
-        echo "Error: Not enough arguments"
+        echo -e "Error: Not enough arguments"
         usage
-        exit 1
     fi
     
     if ! $DOCKER volume inspect --format '{{.Name}}' "$VOLUME_NAME";
     then
-        echo "Error: Volume $VOLUME_NAME does not exist"
-        exit 1
+        echo -e "Error: Volume $VOLUME_NAME does not exist"
+        usage
     fi
 
 # TODO: if FILE_NAME starts with / we need to error out
@@ -94,7 +93,6 @@ cmd_import() {
     if [ -z "$VOLUME_NAME" ] || [ -z "$FILE_NAME" ]; then
         echo "Error: Not enough arguments"
         usage
-        exit 1
     fi
     
     if ! $DOCKER volume inspect --format '{{.Name}}' "$VOLUME_NAME";
@@ -123,14 +121,14 @@ cmd_import() {
 cmd_backup() {
     # generate a datestamp for YYYYmmHHMM; the current time to the minute
 	datestr="$(date +%Y%m%H%M)"
-	backupdir="$context-$datestr"
+	backupdir="$project-$datestr"
 	mkdir -p "$backupdir"
 	
-	# parse the composefile to get the volume names
-	yq e '.volumes | keys | .[]' $composefile | while read -r volume ; do
+	# parse the project file to get the volume names
+	yq e '.volumes | keys | .[]' $project_file | while read -r vol ; do
         # for each volume, export the volume to the
-		volname="${context}_$volume"		
-		target="$backupdir/$volume.tgz"
+		volname="${project}_$vol"		
+		target="$backupdir/$vol.tgz"
 		cmd_export "$volname" "$target"
 	done
 
@@ -138,7 +136,7 @@ cmd_backup() {
     tarfile="$backupdir".tgz 
     tar -zcf "$tarfile" "$backupdir"
     rm -fr "$backupdir"
-    echo backed-up "$context" to "$tarfile"
+    echo backed-up "$project" to "$tarfile"
 }
 
 cmd_restore() {
@@ -148,25 +146,115 @@ cmd_restore() {
     tar -xf "$tarfile"
     tardir=${tarfile%.*}
 
-    # parse the composefile to get the volume names
-	yq e '.volumes | keys | .[]' $composefile | while read -r volume ; do
+    # parse the project file to get the volume names
+	yq e '.volumes | keys | .[]' $project_file | while read -r vol ; do
         # for each volume, import the target into the volume
-		volname="${context}_$volume"		
-		target="$tardir/$volume.tgz"
+		volname="${project}_$vol"		
+		target="$tardir/$vol.tgz"
         cmd_import "$target" "$volname"
 	done
 
     # cleanup the untar directory.
     rm -fr "$tardir"
-    echo "restored $context from $tarfile"
+    echo "restored $project from $tarfile"
 }
 
+# status - perform a status check on each container associated with the cluster
+# 
+# https://docs.docker.com/engine/reference/commandline/inspect/
+# example json (snippit):
+# --
+# "State": {
+#     "Status": "running",
+#     "Running": true,
+#     "Paused": false,
+#     "Restarting": false,
+#     "Dead": false,
+#     "ExitCode": 0,
+#     "Error": "",
+#     "StartedAt": "2023-08-06T06:01:47.859267147Z",
+#     "FinishedAt": "0001-01-01T00:00:00Z"
+# },
+# "Image": "redmine-redmine",
+# "Labels": {
+#    "com.docker.compose.container-number": "1",
+#    "com.docker.compose.project": "redmine",
+#    "com.docker.compose.project.config_files": "/home/philion/github/redmine/docker-compose.yml",
+#    "com.docker.compose.project.working_dir": "/home/philion/github/redmine",
+#    "com.docker.compose.service": "redmine"
+# 
 cmd_status() {
-    $DOCKER ps 
+    # build an array of expected services from the project file
+    expected=$(yq e '.services | keys | .[]' $project_file)
+
+    # use 'docker compose ps --all' in the project dir to get all containers associated with the project
+    # '-q' supresses the header and returns IDs instead of human-readable table
+    $DOCKER compose ps --all -q | while read -r container ; do
+        response=$(DOCKER inspect --type=container "$container" --format "{{.Labels.com.docker.compose.project.working_dir}} {{.Labels.com.docker.compose.service}} {{.State.Status}}")
+        working_dir=${response[0]} # '{{.Labels.com.docker.compose.project.working_dir}}'
+        service=${response[1]}     # '{{.Labels.com.docker.compose.service}}'
+        status_str=${response[2]}  # '{{.State.Status}}'
+        err=0
+        # checks:
+        # TODO '.Labels.com.docker.compose.project.working_dir' == $project_dir <-- same cluster/project
+        # status == 'running'
+        found="false" # using strings for human readability
+        if [ "$status_str" == "running" ]; then
+            # confirm working_dir us the same as project_dir
+            if ! [ "$working_dir" != "$project_dir" ]; then
+                echo -e "unexpected working_dir: $working_dir, expected $project_dir"
+            fi
+
+            # search for service in expected array
+            for i in "${!expected[@]}"; do
+                if [[ "${expected[$i]}" = "${service}" ]]; then
+                    echo "$project $service $status_str" # all good, deeper status check/heartbeat?
+                    # remove service from expected list
+                    unset "expected[$i]" # quotes? really?
+                    echo "$expected" # REMOVE
+                    found="true"
+                    break
+                fi
+            done
+            if ! [ "$found" == "true" ]; then # FIXME check i vs array size?
+                # the service was not found in the expected array
+                echo -e "warning: unexpected $project $service, not in $project_file"
+            fi
+        else 
+            # else dump '.State' for info
+            # TODO - better state formatting
+            fullstate=$(DOCKER inspect --type=container "$container" --format "{{.State}}")
+            echo "$project $service ERROR: $fullstate"
+            err=$((err+1)) # TODO should be list
+        fi
+
+        # check if expected services are missing, the $expected array should be empty
+        if [ "${#expected[@]}" -gt 0 ]; then
+            echo -e "expected services not found in $project: $expected"
+            exit 1
+        fi
+
+        # check for errors
+        if [ $err -gt 0 ]; then
+            echo -e "errors found during status check ($err)"
+            exit 1
+        fi
+	done
+}
+
+usage() {
+    echo -e Unknown command: "$@"
+    echo -e "Usage: $name {up|down|status|rebuild|backup|restore <tgz>}"
+    exit 1
 }
 
 
-# note: resolve $0 to get full path, and cd to it.
+# make sure the compose yaml exists, and the working-dir is correct
+cd "$project_dir" || exit 1
+if ! [ -f "$project_file" ]; then
+    echo -e Cannot fine $project_file.
+    usage
+fi
 
 case "$1" in
     rebuild) $DOCKER compose down; $DOCKER --build -d ;;
@@ -175,7 +263,5 @@ case "$1" in
     status)  cmd_status ;;
 	backup)  cmd_backup ;;
 	restore) cmd_restore "$2" ;;
-    *)
-        echo -e $"Usage: $name {up|down|status|rebuild|backup|restore <tgz>}"
-        exit 1
+    *)       usage "$@"
 esac
