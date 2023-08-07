@@ -12,6 +12,10 @@ services:
       - ALLOW_EMPTY_PASSWORD=yes
       - MARIADB_USER=bn_redmine
       - MARIADB_DATABASE=bitnami_redmine
+    healthcheck:
+      test: ["CMD", "mysqladmin" ,"ping", "-h", "localhost"]
+      timeout: 20s
+      retries: 10
   redmine:
     build: .
     #image: docker.io/bitnami/redmine:5
@@ -33,6 +37,12 @@ services:
       - REDMINE_SMTP_USER=redmine@seattlecommunitynetwork.org
       - REDMINE_SMTP_PASSWORD=${REDMINE_SMTP_PASSWORD}
       - REDMINE_IMAP_PASSWORD=${REDMINE_IMAP_PASSWORD}
+    healthcheck:
+      test: curl --fail http://localhost:3000 || exit 1
+      interval: 60s
+      retries: 5
+      start_period: 20s
+      timeout: 10s
 volumes:
   mariadb_data:
     driver: local
