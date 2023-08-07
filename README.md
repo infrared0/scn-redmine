@@ -89,7 +89,6 @@ Restoring the backup file with 'cluster restore backup-file.tgz'
    2.3 Import the backup into the volume with tar on the specific volume
  3. Cleanup the backup dir (leaving the backup.tgz untouched)
 
-
 ## Further Reading
 
 * https://github.com/bitnami/containers/tree/main/bitnami/redmine#how-to-use-this-image
@@ -97,9 +96,9 @@ Restoring the backup file with 'cluster restore backup-file.tgz'
 * https://www.redmine.org/projects/redmine/wiki/RedmineReceivingEmails
 * https://github.com/BretFisher/docker-vackup
 
-
 ## TODO
 
-TODO: Update usage docs, with new cmds and input feedback	 
-TODO check for tools: docker, yq
-TODO should the cluster script be verbose requarding the commands it issues, to support learning?
+* TODO Add command to `cluster` to update crontab with imap job
+* TODO: Update usage docs, with new cmds and input feedback	 
+* TODO check for tools: docker, yq
+* TODO should the cluster script be verbose requarding the commands it issues, to support learning?
