@@ -13,28 +13,28 @@ This project will also act as an example of best practices for minimalist contai
 
 1. Clone the repo `https://github.com/philion/scn-redmine`.
 2. Copy the `sample.env` file to `.env` and update the passwords:
-
+```
     git clone https://github.com/philion/scn-redmine redmine
     cd redmine
     cp sample.env .env
     chmod 600 .env
-
+```
 3. Update the `.env` file with the correct passwords:
-
+```
     REDMINE_SMTP_PASSWORD=your_password
     REDMINE_IMAP_PASSWORD=your_password
-
+```
 4. Deploy into a standard Docker engine:
-
+```
     ./cluster up
-
+```
 
 ### Configure IMAP
 
 Incoming IMAP email is handled by adding a cron job running on the Docker host:
-
+```
     sudo crontab -e
-
+```
 and add the following entry to the bottom:
 ```
 */5 * * * * docker exec -t redmine-redmine-1 /opt/bitnami/redmine/cron-imap.sh 2>&1 | /usr/bin/logger -t redmine-imap
@@ -47,21 +47,21 @@ This cron job uses docker to execute the imap job inside the redmine container, 
 ### Backup and Restore
 
 The `backup` and `restore` commands rely on parsing the compose YAML file (`docker-compose.yml`). This requires a tool called `yq`, installed with:
-
+```
     sudo snap install yq
-
+```
 The provided `cluster` script handles creating backups and restoring the cluster state from them.
 
 To create a backup:
-
+```
     ./cluster backup
-
+```
 This will create a file named `clustername-datestamp.tgz`, like: redmine-202308051251.tgz
 
 To restore a cluster from backup:
-
+```
     ./cluster restore backup-202308051251.tgz
-
+```
 
 ### Standard Operation
 
