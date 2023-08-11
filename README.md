@@ -6,6 +6,31 @@ to support receiving email via IMAP and secure storage of secrets. When possible
 
 This project will also act as an example of best practices for minimalist container-based projects with support tools to backup and recover container volumes and other documented operating procedures.
 
+## Dependencies
+
+This project depends on a standard Docker Engine install on a Linux environment. (tested on Unbuntu)
+
+To install the necessary tools, see: https://docs.docker.com/engine/install/ubuntu/
+
+The process is essentially:
+```
+sudo apt-get update
+sudo apt-get install ca-certificates curl gnupg
+sudo install -m 0755 -d /etc/apt/keyrings
+curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo gpg --dearmor -o /etc/apt/keyrings/docker.gpg
+sudo chmod a+r /etc/apt/keyrings/docker.gpg
+echo \
+  "deb [arch="$(dpkg --print-architecture)" signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/ubuntu \
+  "$(. /etc/os-release && echo "$VERSION_CODENAME")" stable" | \
+  sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
+sudo apt-get update
+sudo apt-get install docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
+sudo docker run hello-world
+```
+The `cluster` script relies on parsing the compose YAML file (`docker-compose.yml`), using a tool called `yq`, which can be installed with:
+```
+sudo snap install yq
+```
 
 ## Usage
 
@@ -46,10 +71,6 @@ This cron job uses docker to execute the imap job inside the redmine container, 
 
 ### Backup and Restore
 
-The `backup` and `restore` commands rely on parsing the compose YAML file (`docker-compose.yml`). This requires a tool called `yq`, installed with:
-```
-sudo snap install yq
-```
 The provided `cluster` script handles creating backups and restoring the cluster state from them.
 
 To create a backup:
