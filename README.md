@@ -11,56 +11,62 @@ This project will also act as an example of best practices for minimalist contai
 
 ### Deploy
 
-1. Clone the repo `git@github.com:philion/scn-redmine.git`.
+1. Clone the repo `https://github.com/philion/scn-redmine`.
 2. Copy the `sample.env` file to `.env` and update the passwords:
-```
-git clone git@github.com:philion/scn-redmine.git redmine
-cd redmine
-cp sample.env .env
-chmod 600 .env
-vi .env
-```
-3. Update the file with the correct passwords:
-```
-REDMINE_SMTP_PASSWORD=your_password
-REDMINE_IMAP_PASSWORD=your_password
-```
+
+    git clone https://github.com/philion/scn-redmine redmine
+    cd redmine
+    cp sample.env .env
+    chmod 600 .env
+
+3. Update the `.env` file with the correct passwords:
+
+    REDMINE_SMTP_PASSWORD=your_password
+    REDMINE_IMAP_PASSWORD=your_password
+
 4. Deploy into a standard Docker engine:
-```
-./cluster up
-```
+
+    ./cluster up
+
 
 ### Configure IMAP
 
 Incoming IMAP email is handled by adding a cron job running on the Docker host:
-```
-sudo crontab -e
-```
+
+    sudo crontab -e
+
 and add the following entry to the bottom:
 ```
 */5 * * * * docker exec -t redmine-redmine-1 /opt/bitnami/redmine/cron-imap.sh 2>&1 | /usr/bin/logger -t redmine-imap
 ```	
+
 This cron job uses docker to execute the imap job inside the redmine container, and capture std and err output to syslog (tagged "redmine-imap").
 
+> NOTE: redmine-redmine-1 is the expected container name once this compose file is deployed. This might not be correct for your system, check with `./cluster status`
 
 ### Backup and Restore
+
+The `backup` and `restore` commands rely on parsing the compose YAML file (`docker-compose.yml`). This requires a tool called `yq`, installed with:
+
+    sudo snap install yq
 
 The provided `cluster` script handles creating backups and restoring the cluster state from them.
 
 To create a backup:
-```
-./cluster backup
-```
-This will create a file named `clustername-datestamp.tgz`, where redmine-202308051251.tgz
+
+    ./cluster backup
+
+This will create a file named `clustername-datestamp.tgz`, like: redmine-202308051251.tgz
 
 To restore a cluster from backup:
-```
-./cluster restore backup-202308051251.tgz
-```
+
+    ./cluster restore backup-202308051251.tgz
+
 
 ### Standard Operation
 
 The `cluster` script provides standard management operations:
+
 ```
 cluster status        - what's the status of the cluster (default)
 cluster up            - bring the entire cluster
@@ -98,7 +104,7 @@ Restoring the backup file with 'cluster restore backup-file.tgz'
 
 ## TODO
 
-* TODO Add command to `cluster` to update crontab with imap job
+* TODO Add `crontab` command to `cluster` to update crontab with imap job, which can automatically determine the correct container.
 * TODO: Update usage docs, with new cmds and input feedback	 
-* TODO check for tools: docker, yq
+* TODO add pre-check to cluster script for tools: docker, yq
 * TODO should the cluster script be verbose requarding the commands it issues, to support learning?
