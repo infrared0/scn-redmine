@@ -21,8 +21,8 @@ chmod 600 .env
 ```
 3. Update the `.env` file with the correct passwords:
 ```
-    REDMINE_SMTP_PASSWORD=your_password
-    REDMINE_IMAP_PASSWORD=your_password
+REDMINE_SMTP_PASSWORD=your_password
+REDMINE_IMAP_PASSWORD=your_password
 ```
 4. Deploy into a standard Docker engine:
 ```
