@@ -8,6 +8,9 @@ RUN install_packages curl
 COPY cron-imap.sh /opt/bitnami/redmine
 #RUN echo "*/5 * * * * root /opt/bitnami/redmine/cron-imap.sh 2>&1 | /usr/bin/logger -t redmine-imap" | crontab -
 
+# Replace the english locales file with one that replaces "issue" with "ticket"
+COPY en.yml /opt/bitnami/redmine/config/locales/en.yml
+
 # NOTE: This seems to build the container correctly with config as expected
 # but it never invokes the script. So the readme calls for running cron in host.
 # The cron-imap.sh script is used to encapsulate the imap creds in the container.
