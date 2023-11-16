@@ -54,6 +54,11 @@ REDMINE_IMAP_PASSWORD=your_password
 ./cluster up
 ```
 
+### Default Login
+
+user/bitnami1
+
+
 ### Configure IMAP
 
 Incoming IMAP email is handled by adding a cron job running on the Docker host:
